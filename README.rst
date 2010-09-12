@@ -16,6 +16,7 @@ It accepts any function whose type is ([a] -> [a]) or (String -> String).
 * Sort lines
 
  ::
+
   $ hoe 'sort'
   LICENSE
   README.rst
