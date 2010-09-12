@@ -17,14 +17,14 @@ It accepts any function whose type is ([a] -> [a]) or (String -> String).
 
  ::
 
-  $ hoe 'sort'
-  LICENSE
-  README.rst
-  README.rst~
-  Setup.hs
-  dist
-  hoe.cabal
-  src
+    $ hoe 'sort'
+    LICENSE
+    README.rst
+    README.rst~
+    Setup.hs
+    dist
+    hoe.cabal
+    src
 
 * Drop lines
 
