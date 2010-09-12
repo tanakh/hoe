@@ -96,7 +96,7 @@ f <|> g = catchError f (\e -> g)
 
 evalStr s _ = do
   r <- interpret s (as :: IO String)
-  liftIO $ putStr =<< r
+  liftIO $ putStrLn =<< r
 evalStrI s intr = do
   r <- interpret s (as :: String -> String)
   liftIO $ intr r
