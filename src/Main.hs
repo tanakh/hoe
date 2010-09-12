@@ -104,7 +104,7 @@ evalStrI s intr = do
 evalShow s =
   evalStr $ "return $ show (" ++ s ++ ")"
 evalIO s =
-  evalStr $ "((" ++ s ++ ") >> return \"\")"
+  evalStr $ "((" ++ s ++ ") >>= \\() -> return \"\")"
 evalIOShow s =
   evalStr $ "return . show =<< (" ++ s ++ ")"
 evalStrListToStrList s =
