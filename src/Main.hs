@@ -2,16 +2,17 @@
 
 module Main (main) where
 
+import Control.Monad hiding (join)
 import Control.Monad.Error.Class
 import System.Console.CmdArgs as CA
 import System.IO
 
 import Language.Haskell.Interpreter
-import Language.Haskell.Exts
 
 data Option
   = Option
     { join :: Bool
+    , inplace :: Maybe String
     , script :: String
     , inputFiles :: [String]
     }
@@ -20,10 +21,11 @@ data Option
 option =
   Option {
     join = def &= help "Join a type of script",
+    inplace = def &= help "Edit files in place (make bkup if EXT supplied)" &= opt "" &= typ "EXT",
     script = def &= argPos 0 &= typ "SCRIPT", 
     inputFiles = def &= args &= typ "FILES" }
   &= program "hoe"
-  &= summary "Haskell One-liner Envaliation, (c) Hideyuki Tanaka 2010"
+  &= summary "Haskell One-liner Evaluator, (c) Hideyuki Tanaka 2010"
 
 main :: IO ()
 main = do
@@ -69,18 +71,35 @@ evalOneLiner opts = runInterpreter $ do
           , evalErr
           ]
   
-  choice (if join opts then reverse evals else evals) $ script opts
+  let intr = genInteract opts
+  
+  choice (if join opts then reverse evals else evals) (script opts) intr
 
-choice fs s = foldl1 (<|>) (map (\f -> f s) fs)
+genInteract :: Main.Option -> (String -> String) -> IO ()
+genInteract opts =
+  case (inputFiles opts, inplace opts) of
+    ([], _) -> interact
+    (files, Nothing) -> \f -> do
+      forM_ files $ \file -> do
+        s <- readFile file
+        putStr $ f s
+    (files, Just ext) -> \f -> do
+      forM_ files $ \file -> do
+        s <- readFile file
+        when (ext /= "") $ do
+          writeFile (file ++ ext) s
+        length s `seq` writeFile file (f s)
+
+choice fs s intr = foldl1 (<|>) (map (\f -> f s intr) fs)
 
 f <|> g = catchError f (\e -> g)
 
-evalStr s = do
+evalStr s _ = do
   r <- interpret s (as :: IO String)
   liftIO $ putStr =<< r
-evalStrI s = do
+evalStrI s intr = do
   r <- interpret s (as :: String -> String)
-  liftIO $ interact r
+  liftIO $ intr r
 
 evalShow s =
   evalStr $ "return $ show (" ++ s ++ ")"
@@ -103,6 +122,6 @@ evalStrToStr s = do
 evalCharToChar s = do
   evalStrI $ "map (" ++ s ++ ")"
 
-evalErr s = do
+evalErr s _ = do
   t <- typeOf s
   fail $ "cannot evaluate: " ++ t
