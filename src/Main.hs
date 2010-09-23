@@ -7,7 +7,7 @@ import Control.Monad.Error.Class
 import System.Console.CmdArgs as CA
 import System.IO
 
-import Language.Haskell.Interpreter
+import Language.Haskell.Interpreter as HInt
 
 data Option
   = Option
@@ -56,6 +56,7 @@ evalOneLiner opts = runInterpreter $ do
     , ("System.IO.Unsafe", Nothing)
     , ("Text.Printf", Nothing)
     ]
+  set [ installedModulesInScope HInt.:= True ]
   
   let evals
         = [ evalShow

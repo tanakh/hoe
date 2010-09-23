@@ -1,5 +1,5 @@
 Name:                hoe
-Version:             0.1
+Version:             0.2
 Synopsis:            Haskell One-liner Evaluator
 
 Description:
@@ -11,6 +11,7 @@ License-file:        LICENSE
 Author:              Hideyuki Tanaka
 Maintainer:          tanaka.hideyuki@gmail.com
 Copyright:           Copyright (c) 2010 Hideyuki Tanaka
+Homepage:            http://github.com/tanakh/hoe
 Category:            Compilers/Interpreters
 Build-type:          Simple
 Cabal-version:       >=1.6
