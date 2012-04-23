@@ -7,7 +7,7 @@ import Control.Monad.Error.Class
 import System.Console.CmdArgs as CA
 import System.IO
 
-import Language.Haskell.Interpreter as HInt
+import Language.Haskell.Interpreter as HInt hiding (name)
 
 data Option
   = Option
@@ -15,6 +15,7 @@ data Option
     , inplace :: Maybe String
     , script :: String
     , inputFiles :: [String]
+    , modules :: [String]
     }
   deriving (Show, Data, Typeable)
 
@@ -23,7 +24,12 @@ option =
     join = def &= help "Join a type of script",
     inplace = def &= help "Edit files in place (make bkup if EXT supplied)" &= opt "" &= typ "EXT",
     script = def &= argPos 0 &= typ "SCRIPT", 
-    inputFiles = def &= args &= typ "FILES" }
+    inputFiles = def &= args &= typ "FILES",
+    modules = def &= help "Import a module before running the script"
+                  &= opt ""
+                  &= explicit
+                  &= name "mod"
+                  &= name "m" }
   &= program "hoe"
   &= summary "Haskell One-liner Evaluator, (c) Hideyuki Tanaka 2010"
 
@@ -45,7 +51,7 @@ main = do
 
 evalOneLiner opts = runInterpreter $ do
   reset
-  setImportsQ
+  setImportsQ $
     [ ("Prelude", Nothing)
     , ("Control.Applicative", Nothing)
     , ("Control.Monad", Nothing)
@@ -55,7 +61,7 @@ evalOneLiner opts = runInterpreter $ do
     , ("System.IO", Nothing)
     , ("System.IO.Unsafe", Nothing)
     , ("Text.Printf", Nothing)
-    ]
+    ] ++ [ (m, Nothing) | m <- modules opts ]
   set [ installedModulesInScope HInt.:= True ]
   
   let evals
