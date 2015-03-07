@@ -13,47 +13,48 @@ import           Template
 type Script    = String -> IO String
 type Evaluator = String -> Interpreter Script
 
-evals :: [(String, Evaluator)]
+evals :: [(String, String, Evaluator)]
 evals =
-  [ ( "String"
-    , evaluator [t| \_ -> return expr |]
-    )
-  , ( "Show a => a"
-    , evaluator [t| \_ -> return $ show expr ++ "\n" |]
-    )
-  , ( "IO ()"
-    , evaluator [t| \_ -> do () <- expr; return "" |]
-    )
-  , ( "IO String"
-    , evaluator [t| \_ -> expr |]
-    )
-  , ( "Show a => IO a"
-    , evaluator [t| \_ -> expr >>= return . show |]
-    )
+  [ -- simple value
+    evaluator "String" "output string"
+    [t| \_ -> return expr |]
 
-  , ( "Char -> Char"
-    , evaluator [t| return . map expr input |]
-    )
+  , evaluator "Show a => a" "output value"
+    [t| \_ -> return $ show expr ++ "\n" |]
 
-  , ( "String -> String"
-    , evaluator [t| return . expr |]
-    )
-  , ( "String -> [String]"
-    , evaluator [t| return . unlines . expr |]
-    )
+    -- IO action
+  , evaluator "IO ()" "execute action"
+    [t| \_ -> do () <- expr; return "" |]
 
-  , ( "[String] -> [String]"
-    , evaluator [t| return . unlines . expr . lines |]
-    )
-  , ( "[String] -> String"
-    , evaluator [t| return . (++ "\n") . expr . lines |]
-    )
+  , evaluator "IO String" "output result string"
+    [t| \_ -> expr |]
 
-  , ( "error", evalErr )
+  , evaluator "Show a => IO a" "output result value"
+    [t| \_ -> expr >>= return . (++ "\n") . show |]
+
+    -- input whole string
+  , evaluator "Char -> Char" "map input string"
+    [t| return . map expr input |]
+
+  , evaluator "String -> String" "transform whole input string"
+    [t| return . expr |]
+
+  , evaluator "String -> [String]" "transform whole input string to lines"
+    [t| return . unlines . expr |]
+
+    -- input lines
+  , evaluator "[String] -> String" "transform lines to string"
+    [t| return . (++ "\n") . expr . lines |]
+
+  , evaluator "[String] -> [String]" "transform lines to line"
+    [t| return . unlines . expr . lines |]
+
+  , ( "a", "error", evalErr )
   ]
 
-evaluator :: (String -> String) -> Evaluator
-evaluator templ expr = interpret (templ expr) (as :: Script)
+evaluator :: String -> String -> (String -> String) -> (String, String, Evaluator)
+evaluator typ description templ =
+  (typ, description, \expr -> interpret (templ expr) (as :: Script))
 
 evalErr :: Evaluator
 evalErr expr = do

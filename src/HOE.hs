@@ -18,15 +18,31 @@ import           Evaluator
 imports :: [String]
 imports =
   [ "Prelude"
+
+    -- from base
   , "Control.Applicative"
   , "Control.Arrow"
   , "Control.Monad"
+  , "Data.Bits"
   , "Data.Char"
+  , "Data.Complex"
+  , "Data.Either"
+  , "Data.Function"
   , "Data.List"
+  , "Data.Maybe"
+  , "Data.Monoid"
   , "Data.Ord"
+  , "Data.Ratio"
+  , "Numeric"
   , "System.IO"
   , "System.IO.Unsafe"
+  , "System.Info"
+  , "System.Random"
   , "Text.Printf"
+
+    -- other common modules
+  , "Data.List.Split" -- from split
+  , "Data.Time"       -- from time
   ]
 
 data Option
@@ -40,14 +56,18 @@ data Option
 
 option :: Option
 option = Option
-  { inplace = def &= help "Edit files in place (make bkup if EXT supplied)" &= opt "" &= typ "EXT"
-  , script = def &= argPos 0 &= typ "SCRIPT"
-  , inputFiles = def &= args &= typ "FILES"
-  , modules = def &= help "Import a module before running the script"
-                  &= opt ""
-                  &= explicit
-                  &= name "mod"
-                  &= name "m"
+  { inplace =
+      def &= help "Edit files in place (make bkup if EXT supplied)" &= opt "" &= typ "EXT"
+  , script =
+      def &= argPos 0 &= typ "SCRIPT"
+  , inputFiles =
+      def &= args &= typ "FILES"
+  , modules =
+      def &= help "Import a module before running the script"
+          &= opt ""
+          &= explicit
+          &= name "mod"
+          &= name "m"
   }
   &= program "hoe"
   &= summary "Haskell One-liner Evaluator"
@@ -77,8 +97,11 @@ evalOneLiner opts = runInterpreter $ do
     [ (m, Nothing) | m <- modules opts ]
   set [ installedModulesInScope := True ]
 
-  (_descr, f) <- choice [ (descr, ) <$> compile (script opts) | (descr, compile) <- evals ]
-  liftIO $ hPutStrLn stderr _descr
+  (_typ, _descr, f) <-
+    choice [ (typ, descr, ) <$> compile (script opts)
+           | (typ, descr, compile) <- evals
+           ]
+  liftIO $ hPutStrLn stderr $ "Use: " ++ _typ ++ " :: " ++ _descr
   liftIO $ exec opts f
 
 choice :: [Interpreter a] -> Interpreter a
