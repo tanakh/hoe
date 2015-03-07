@@ -24,9 +24,10 @@ Executable hoe
   Main-is:             HOE.hs
 
   Build-depends:       base >= 4 && < 5
-                     , hint >= 0.3.3
-                     , mtl == 2.*
                      , cmdargs
+                     , exceptions
+                     , hint >= 0.4.2
+                     , mtl == 2.*
 
   Hs-source-dirs:      src
   Ghc-options:         -Wall

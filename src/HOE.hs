@@ -1,17 +1,18 @@
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable  #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Main (main) where
 
-import           Control.Monad                hiding (join)
-import           Control.Monad.Error.Class
+import           Control.Monad
+import           Control.Monad.Catch
 import           System.Console.CmdArgs       as CA
 import           System.IO
 
-import           Language.Haskell.Interpreter as HInt hiding (name)
+import           Language.Haskell.Interpreter as HInt hiding (Option, name)
 
 data Option
   = Option
-    { join       :: Bool
+    { joinType   :: Bool
     , inplace    :: Maybe String
     , script     :: String
     , inputFiles :: [String]
@@ -19,9 +20,10 @@ data Option
     }
   deriving (Show, Data, Typeable)
 
+option :: Option
 option =
   Option {
-    join = def &= help "Join a type of script",
+    joinType = def &= help "Join a type of script",
     inplace = def &= help "Edit files in place (make bkup if EXT supplied)" &= opt "" &= typ "EXT",
     script = def &= argPos 0 &= typ "SCRIPT",
     inputFiles = def &= args &= typ "FILES",
@@ -31,24 +33,25 @@ option =
                   &= name "mod"
                   &= name "m" }
   &= program "hoe"
-  &= summary "Haskell One-liner Evaluator, (c) Hideyuki Tanaka 2010"
+  &= summary "Haskell One-liner Evaluator"
 
 main :: IO ()
 main = do
   opts <- cmdArgs option
-  r <- undefined -- evalOneLiner opts
+  r <- evalOneLiner opts
   case r of
     Left err ->
       case err of
         WontCompile errs ->
           hPutStrLn stderr $ "compile error: " ++ unlines (map errMsg errs)
         UnknownError msg ->
-          hPutStrLn stderr $ msg
+          hPutStrLn stderr msg
         _ ->
-          hPutStrLn stderr $ show err
+          hPrint stderr err
     Right _ ->
       return ()
 
+evalOneLiner :: Option -> IO (Either InterpreterError ())
 evalOneLiner opts = runInterpreter $ do
   reset
   setImportsQ $
@@ -61,28 +64,18 @@ evalOneLiner opts = runInterpreter $ do
     , ("System.IO", Nothing)
     , ("System.IO.Unsafe", Nothing)
     , ("Text.Printf", Nothing)
-    ] ++ [ (m, Nothing) | m <- modules opts ]
+    ] ++
+    [ (m, Nothing) | m <- modules opts ]
   set [ installedModulesInScope HInt.:= True ]
-
-  let evals
-        = [ evalShow
-          , evalIO
-          , evalIOShow
-          , evalStrListToStrList
-          , evalStrListToStr
-          , evalStrToStrList
-          , evalStrLineToStrLine
-          , evalStrLineToStr
-          , evalStrToStr
-          , evalCharToChar
-          , evalErr
-          ]
 
   let intr = genInteract opts
 
-  choice (if join opts then reverse evals else evals) (script opts) intr
+  choice (if joinType opts then reverse evals else evals) (script opts) intr
 
-genInteract :: Main.Option -> (String -> String) -> IO ()
+type Interact = (String -> String) -> IO ()
+type Evaluator = String -> Interact -> Interpreter ()
+
+genInteract :: Main.Option -> Interact
 genInteract opts =
   case (inputFiles opts, inplace opts) of
     ([], _) -> interact
@@ -97,9 +90,25 @@ genInteract opts =
           writeFile (file ++ ext) s
         length s `seq` writeFile file (f s)
 
+choice :: [Evaluator] -> String -> Interact -> Interpreter ()
 choice fs s intr = foldl1 (<|>) (map (\f -> f s intr) fs)
 
-f <|> g = catchError f (\e -> g)
+f <|> g = catch f (\(_e :: SomeException) -> g)
+
+evals :: [Evaluator]
+evals =
+  [ evalShow
+  , evalIO
+  , evalIOShow
+  , evalStrListToStrList
+  , evalStrListToStr
+  , evalStrToStrList
+  , evalStrLineToStrLine
+  , evalStrLineToStr
+  , evalStrToStr
+  , evalCharToChar
+  , evalErr
+  ]
 
 evalStr s _ = do
   r <- interpret s (as :: IO String)
