@@ -1,14 +1,19 @@
 {-# LANGUAGE DeriveDataTypeable  #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections       #-}
 
 module Main (main) where
 
+import           Control.Applicative
 import           Control.Monad
 import           Control.Monad.Catch
-import           System.Console.CmdArgs       as CA
+import           Language.Haskell.Interpreter (OptionVal ((:=)))
+import           Language.Haskell.Interpreter hiding (Option, name)
+import           System.Console.CmdArgs       as CA hiding ((:=))
+import           System.Exit                  (exitFailure)
 import           System.IO
 
-import           Language.Haskell.Interpreter as HInt hiding (Option, name)
+import           Evaluator
 
 data Option
   = Option
@@ -21,17 +26,17 @@ data Option
   deriving (Show, Data, Typeable)
 
 option :: Option
-option =
-  Option {
-    joinType = def &= help "Join a type of script",
-    inplace = def &= help "Edit files in place (make bkup if EXT supplied)" &= opt "" &= typ "EXT",
-    script = def &= argPos 0 &= typ "SCRIPT",
-    inputFiles = def &= args &= typ "FILES",
-    modules = def &= help "Import a module before running the script"
+option = Option
+  { joinType = def &= help "Join a type of script"
+  , inplace = def &= help "Edit files in place (make bkup if EXT supplied)" &= opt "" &= typ "EXT"
+  , script = def &= argPos 0 &= typ "SCRIPT"
+  , inputFiles = def &= args &= typ "FILES"
+  , modules = def &= help "Import a module before running the script"
                   &= opt ""
                   &= explicit
                   &= name "mod"
-                  &= name "m" }
+                  &= name "m"
+  }
   &= program "hoe"
   &= summary "Haskell One-liner Evaluator"
 
@@ -40,7 +45,7 @@ main = do
   opts <- cmdArgs option
   r <- evalOneLiner opts
   case r of
-    Left err ->
+    Left err -> do
       case err of
         WontCompile errs ->
           hPutStrLn stderr $ "compile error: " ++ unlines (map errMsg errs)
@@ -48,6 +53,7 @@ main = do
           hPutStrLn stderr msg
         _ ->
           hPrint stderr err
+      exitFailure
     Right _ ->
       return ()
 
@@ -66,17 +72,19 @@ evalOneLiner opts = runInterpreter $ do
     , ("Text.Printf", Nothing)
     ] ++
     [ (m, Nothing) | m <- modules opts ]
-  set [ installedModulesInScope HInt.:= True ]
+  set [ installedModulesInScope := True ]
 
-  let intr = genInteract opts
+  let evals' | joinType opts = reverse evals
+             | otherwise     = evals
 
-  f <- choice (map ($ script opts) $ if joinType opts then reverse evals else evals)
-  liftIO $ intr f
+      choice = foldl1 $ \a b -> catch a (\(_e :: SomeException) -> b)
 
-type Interact = (String -> IO String) -> IO ()
+  (_descr, f) <- choice [ (descr, ) <$> compile (script opts) | (descr, compile) <- evals' ]
+  liftIO $ putStrLn _descr
+  liftIO $ exec opts f
 
-genInteract :: Main.Option -> Interact
-genInteract opts f =
+exec :: Main.Option -> Script -> IO ()
+exec opts f =
   case (inputFiles opts, inplace opts) of
     ([], _) -> do
         s <- getContents
@@ -93,61 +101,3 @@ genInteract opts f =
         when (ext /= "") $
           writeFile (file ++ ext) s
         length s `seq` writeFile file =<< f s
-
-choice :: [Interpreter a] -> Interpreter a
-choice = foldl1 (<|>)
-
-f <|> g = catch f (\(_e :: SomeException) -> g)
-
-type Evaluator = String -> Interpreter (String -> IO String)
-
-evals :: [Evaluator]
-evals =
-  [ evalShow
-  , evalIO
-  , evalIOShow
-  , evalStrListToStrList
-  , evalStrListToStr
-  , evalStrToStrList
-  , evalStrLineToStrLine
-  , evalStrLineToStr
-  , evalStrToStr
-  , evalCharToChar
-  , evalErr
-  ]
-
-evalStr :: Evaluator
-evalStr script = do
-  v <- interpret script (as :: IO String)
-  return $ \_input -> v
-
-evalStrI :: Evaluator
-evalStrI script = do
-  f <- interpret script (as :: String -> String)
-  return $ \input -> return $ f input
-
-evalShow s =
-  evalStr $ "return $ show (" ++ s ++ ")"
-evalIO s =
-  evalStr $ "((" ++ s ++ ") >>= \\() -> return \"\")"
-evalIOShow s =
-  evalStr $ "return . show =<< (" ++ s ++ ")"
-evalStrListToStrList s =
-  evalStrI $ "unlines . (" ++ s ++ ") . lines"
-evalStrListToStr s =
-  evalStrI $ "(++\"\\n\") . (" ++ s ++ ") . lines"
-evalStrToStrList s =
-  evalStrI $ "unlines . (" ++ s ++ ")"
-evalStrLineToStrLine s =
-  evalStrI $ "unlines . map snd . sort . zipWith (" ++ s ++ ") [1..] . lines"
-evalStrLineToStr s =
-  evalStrI $ "unlines . zipWith (" ++ s ++ ") [1..] . lines"
-evalStrToStr s =
-  evalStrI $ "unlines . map (" ++ s ++ ") . lines"
-evalCharToChar s =
-  evalStrI $ "map (" ++ s ++ ")"
-
-evalErr :: Evaluator
-evalErr script = do
-  t <- typeOf script
-  fail $ "cannot evaluate: " ++ t
