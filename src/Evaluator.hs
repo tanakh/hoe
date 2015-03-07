@@ -16,18 +16,44 @@ type Evaluator = String -> Interpreter Script
 evals :: [(String, Evaluator)]
 evals =
   [ ( "String"
-    , evaluator [t| \_ -> return bexpr |]
+    , evaluator [t| \_ -> return expr |]
     )
-  , ( "Show a"
+  , ( "Show a => a"
     , evaluator [t| \_ -> return $ show expr ++ "\n" |]
     )
   , ( "IO ()"
     , evaluator [t| \_ -> do () <- expr; return "" |]
     )
-
-  , ( "error"
-    , evalErr
+  , ( "IO String"
+    , evaluator [t| \_ -> expr |]
     )
+  , ( "Show a => IO a"
+    , evaluator [t| \_ -> expr >>= return . show |]
+    )
+
+  , ( "Char -> Char"
+    , evaluator [t| return . map expr input |]
+    )
+
+  , ( "String -> String (whole)"
+    , evaluator [t| return . expr |]
+    )
+  , ( "String -> String (lines)"
+    , evaluator [t| return . unlines . map expr . lines |]
+    )
+
+  , ( "[String] -> [String]"
+    , evaluator [t| return . unlines . expr . lines |]
+    )
+  , ( "[String] -> String"
+    , evaluator [t| return . (++ "\n") . expr . lines |]
+    )
+
+  , ( "String -> [String]"
+    , evaluator [t| return . unlines . expr |]
+    )
+
+  , ( "error", evalErr )
   ]
 
 evaluator :: (String -> String) -> Evaluator
@@ -37,43 +63,3 @@ evalErr :: Evaluator
 evalErr expr = do
   typ <- typeOf expr
   fail $ "cannot evaluate type of: " ++ typ
-
--- evaluators
-
-{-
-evalIO :: Evaluator
-evalIO s =
-  evalCode $ "((" ++ s ++ ") >>= \\() -> return \"\")"
-
-evalIOShow :: Evaluator
-evalIOShow s =
-  evalCode $ "return . show =<< (" ++ s ++ ")"
-
-evalStrListToStrList :: Evaluator
-evalStrListToStrList s =
-  evalCode $ "unlines . (" ++ s ++ ") . lines"
-
-evalStrListToStr :: Evaluator
-evalStrListToStr s =
-  evalCode $ "(++\"\\n\") . (" ++ s ++ ") . lines"
-
-evalStrToStrList :: Evaluator
-evalStrToStrList s =
-  evalCode $ "unlines . (" ++ s ++ ")"
-
-evalStrLineToStrLine :: Evaluator
-evalStrLineToStrLine s =
-  evalCode $ "unlines . map snd . sort . zipWith (" ++ s ++ ") [1..] . lines"
-
-evalStrLineToStr :: Evaluator
-evalStrLineToStr s =
-  evalCode $ "unlines . zipWith (" ++ s ++ ") [1..] . lines"
-
-evalStrToStr :: Evaluator
-evalStrToStr s =
-  evalCode $ "unlines . map (" ++ s ++ ") . lines"
-
-evalCharToChar :: Evaluator
-evalCharToChar s =
-  evalCode $ "map (" ++ s ++ ")"
--}

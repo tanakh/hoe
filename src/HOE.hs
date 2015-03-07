@@ -80,7 +80,7 @@ evalOneLiner opts = runInterpreter $ do
       choice = foldl1 $ \a b -> catch a (\(_e :: SomeException) -> b)
 
   (_descr, f) <- choice [ (descr, ) <$> compile (script opts) | (descr, compile) <- evals' ]
-  liftIO $ putStrLn _descr
+  liftIO $ hPutStrLn stderr _descr
   liftIO $ exec opts f
 
 exec :: Main.Option -> Script -> IO ()
