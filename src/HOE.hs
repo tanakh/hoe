@@ -70,30 +70,36 @@ evalOneLiner opts = runInterpreter $ do
 
   let intr = genInteract opts
 
-  choice (if joinType opts then reverse evals else evals) (script opts) intr
+  f <- choice (map ($ script opts) $ if joinType opts then reverse evals else evals)
+  liftIO $ intr f
 
-type Interact = (String -> String) -> IO ()
-type Evaluator = String -> Interact -> Interpreter ()
+type Interact = (String -> IO String) -> IO ()
 
 genInteract :: Main.Option -> Interact
-genInteract opts =
+genInteract opts f =
   case (inputFiles opts, inplace opts) of
-    ([], _) -> interact
-    (files, Nothing) -> \f -> do
-      forM_ files $ \file -> do
-        s <- readFile file
-        putStr $ f s
-    (files, Just ext) -> \f -> do
-      forM_ files $ \file -> do
-        s <- readFile file
-        when (ext /= "") $ do
-          writeFile (file ++ ext) s
-        length s `seq` writeFile file (f s)
+    ([], _) -> do
+        s <- getContents
+        putStr =<< f s
 
-choice :: [Evaluator] -> String -> Interact -> Interpreter ()
-choice fs s intr = foldl1 (<|>) (map (\f -> f s intr) fs)
+    (files, Nothing) ->
+      forM_ files $ \file -> do
+        s <- readFile file
+        putStr =<< f s
+
+    (files, Just ext) ->
+      forM_ files $ \file -> do
+        s <- readFile file
+        when (ext /= "") $
+          writeFile (file ++ ext) s
+        length s `seq` writeFile file =<< f s
+
+choice :: [Interpreter a] -> Interpreter a
+choice = foldl1 (<|>)
 
 f <|> g = catch f (\(_e :: SomeException) -> g)
+
+type Evaluator = String -> Interpreter (String -> IO String)
 
 evals :: [Evaluator]
 evals =
@@ -110,12 +116,15 @@ evals =
   , evalErr
   ]
 
-evalStr s _ = do
-  r <- interpret s (as :: IO String)
-  liftIO $ putStrLn =<< r
-evalStrI s intr = do
-  r <- interpret s (as :: String -> String)
-  liftIO $ intr r
+evalStr :: Evaluator
+evalStr script = do
+  v <- interpret script (as :: IO String)
+  return $ \_input -> v
+
+evalStrI :: Evaluator
+evalStrI script = do
+  f <- interpret script (as :: String -> String)
+  return $ \input -> return $ f input
 
 evalShow s =
   evalStr $ "return $ show (" ++ s ++ ")"
@@ -125,19 +134,20 @@ evalIOShow s =
   evalStr $ "return . show =<< (" ++ s ++ ")"
 evalStrListToStrList s =
   evalStrI $ "unlines . (" ++ s ++ ") . lines"
-evalStrListToStr s = do
+evalStrListToStr s =
   evalStrI $ "(++\"\\n\") . (" ++ s ++ ") . lines"
 evalStrToStrList s =
   evalStrI $ "unlines . (" ++ s ++ ")"
-evalStrLineToStrLine s = do
+evalStrLineToStrLine s =
   evalStrI $ "unlines . map snd . sort . zipWith (" ++ s ++ ") [1..] . lines"
-evalStrLineToStr s = do
+evalStrLineToStr s =
   evalStrI $ "unlines . zipWith (" ++ s ++ ") [1..] . lines"
-evalStrToStr s = do
+evalStrToStr s =
   evalStrI $ "unlines . map (" ++ s ++ ") . lines"
-evalCharToChar s = do
+evalCharToChar s =
   evalStrI $ "map (" ++ s ++ ")"
 
-evalErr s _ = do
-  t <- typeOf s
+evalErr :: Evaluator
+evalErr script = do
+  t <- typeOf script
   fail $ "cannot evaluate: " ++ t
