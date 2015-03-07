@@ -1,21 +1,21 @@
-{-# Language DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 
 module Main (main) where
 
-import Control.Monad hiding (join)
-import Control.Monad.Error.Class
-import System.Console.CmdArgs as CA
-import System.IO
+import           Control.Monad                hiding (join)
+import           Control.Monad.Error.Class
+import           System.Console.CmdArgs       as CA
+import           System.IO
 
-import Language.Haskell.Interpreter as HInt hiding (name)
+import           Language.Haskell.Interpreter as HInt hiding (name)
 
 data Option
   = Option
-    { join :: Bool
-    , inplace :: Maybe String
-    , script :: String
+    { join       :: Bool
+    , inplace    :: Maybe String
+    , script     :: String
     , inputFiles :: [String]
-    , modules :: [String]
+    , modules    :: [String]
     }
   deriving (Show, Data, Typeable)
 
@@ -23,7 +23,7 @@ option =
   Option {
     join = def &= help "Join a type of script",
     inplace = def &= help "Edit files in place (make bkup if EXT supplied)" &= opt "" &= typ "EXT",
-    script = def &= argPos 0 &= typ "SCRIPT", 
+    script = def &= argPos 0 &= typ "SCRIPT",
     inputFiles = def &= args &= typ "FILES",
     modules = def &= help "Import a module before running the script"
                   &= opt ""
@@ -36,7 +36,7 @@ option =
 main :: IO ()
 main = do
   opts <- cmdArgs option
-  r <- evalOneLiner opts
+  r <- undefined -- evalOneLiner opts
   case r of
     Left err ->
       case err of
@@ -63,7 +63,7 @@ evalOneLiner opts = runInterpreter $ do
     , ("Text.Printf", Nothing)
     ] ++ [ (m, Nothing) | m <- modules opts ]
   set [ installedModulesInScope HInt.:= True ]
-  
+
   let evals
         = [ evalShow
           , evalIO
@@ -77,9 +77,9 @@ evalOneLiner opts = runInterpreter $ do
           , evalCharToChar
           , evalErr
           ]
-  
+
   let intr = genInteract opts
-  
+
   choice (if join opts then reverse evals else evals) (script opts) intr
 
 genInteract :: Main.Option -> (String -> String) -> IO ()
