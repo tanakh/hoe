@@ -15,10 +15,23 @@ import           System.IO
 
 import           Evaluator
 
+imports :: [String]
+imports =
+  [ "Prelude"
+  , "Control.Applicative"
+  , "Control.Arrow"
+  , "Control.Monad"
+  , "Data.Char"
+  , "Data.List"
+  , "Data.Ord"
+  , "System.IO"
+  , "System.IO.Unsafe"
+  , "Text.Printf"
+  ]
+
 data Option
   = Option
-    { joinType   :: Bool
-    , inplace    :: Maybe String
+    { inplace    :: Maybe String
     , script     :: String
     , inputFiles :: [String]
     , modules    :: [String]
@@ -27,8 +40,7 @@ data Option
 
 option :: Option
 option = Option
-  { joinType = def &= help "Join a type of script"
-  , inplace = def &= help "Edit files in place (make bkup if EXT supplied)" &= opt "" &= typ "EXT"
+  { inplace = def &= help "Edit files in place (make bkup if EXT supplied)" &= opt "" &= typ "EXT"
   , script = def &= argPos 0 &= typ "SCRIPT"
   , inputFiles = def &= args &= typ "FILES"
   , modules = def &= help "Import a module before running the script"
@@ -61,27 +73,16 @@ evalOneLiner :: Option -> IO (Either InterpreterError ())
 evalOneLiner opts = runInterpreter $ do
   reset
   setImportsQ $
-    [ ("Prelude", Nothing)
-    , ("Control.Applicative", Nothing)
-    , ("Control.Monad", Nothing)
-    , ("Data.Char", Nothing)
-    , ("Data.List", Nothing)
-    , ("Data.Ord", Nothing)
-    , ("System.IO", Nothing)
-    , ("System.IO.Unsafe", Nothing)
-    , ("Text.Printf", Nothing)
-    ] ++
+    [ (m, Nothing) | m <- imports ] ++
     [ (m, Nothing) | m <- modules opts ]
   set [ installedModulesInScope := True ]
 
-  let evals' | joinType opts = reverse evals
-             | otherwise     = evals
-
-      choice = foldl1 $ \a b -> catch a (\(_e :: SomeException) -> b)
-
-  (_descr, f) <- choice [ (descr, ) <$> compile (script opts) | (descr, compile) <- evals' ]
+  (_descr, f) <- choice [ (descr, ) <$> compile (script opts) | (descr, compile) <- evals ]
   liftIO $ hPutStrLn stderr _descr
   liftIO $ exec opts f
+
+choice :: [Interpreter a] -> Interpreter a
+choice = foldl1 $ \a b -> catch a (\(_e :: SomeException) -> b)
 
 exec :: Main.Option -> Script -> IO ()
 exec opts f =

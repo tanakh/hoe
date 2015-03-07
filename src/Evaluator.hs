@@ -10,7 +10,7 @@ import           Language.Haskell.Interpreter
 
 import           Template
 
-type Script = String -> IO String
+type Script    = String -> IO String
 type Evaluator = String -> Interpreter Script
 
 evals :: [(String, Evaluator)]
@@ -35,11 +35,11 @@ evals =
     , evaluator [t| return . map expr input |]
     )
 
-  , ( "String -> String (whole)"
+  , ( "String -> String"
     , evaluator [t| return . expr |]
     )
-  , ( "String -> String (lines)"
-    , evaluator [t| return . unlines . map expr . lines |]
+  , ( "String -> [String]"
+    , evaluator [t| return . unlines . expr |]
     )
 
   , ( "[String] -> [String]"
@@ -47,10 +47,6 @@ evals =
     )
   , ( "[String] -> String"
     , evaluator [t| return . (++ "\n") . expr . lines |]
-    )
-
-  , ( "String -> [String]"
-    , evaluator [t| return . unlines . expr |]
     )
 
   , ( "error", evalErr )
