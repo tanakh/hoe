@@ -123,5 +123,5 @@ exec opts f =
       forM_ files $ \file -> do
         s <- readFile file
         when (ext /= "") $
-          writeFile (file ++ ext) s
+          writeFile (file ++ "." ++ ext) s
         length s `seq` writeFile file =<< f s
