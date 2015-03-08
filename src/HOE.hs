@@ -60,7 +60,7 @@ data Option
 option :: Option
 option = Option
   { inplace =
-      def &= help "Edit files in place (make bkup if EXT supplied)" &= opt "" &= typ "EXT"
+      def &= help "Edit files in place (make backup if EXT supplied)" &= opt "" &= typ "EXT"
   , script =
       def &= argPos 0 &= typ "SCRIPT"
   , inputFiles =
