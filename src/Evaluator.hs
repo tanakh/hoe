@@ -1,5 +1,3 @@
-{-# LANGUAGE QuasiQuotes #-}
-
 module Evaluator (
   Script,
   Evaluator,
@@ -7,8 +5,6 @@ module Evaluator (
   ) where
 
 import           Language.Haskell.Interpreter
-
-import           Template                     (t)
 
 type Script    = String -> IO String
 type Evaluator = String -> Interpreter Script
@@ -26,9 +22,9 @@ types =
 evals :: [(String, String, Evaluator)]
 evals =
   [ evaluator "IO ()" "execute action"
-    [t| \_ -> do () <- expr; return "" |]
+      (\expr -> "\\_ -> " ++ expr ++ " >>= \\() -> return \"\"")
   , evaluator "Char -> Char" "map input string"
-    [t| return . map expr |]
+      (\expr -> "\\_ -> return . map . " ++ expr)
   ] ++
   [ evaluator outputType ("output " ++ outputDescr)
       (\expr -> "\\_ -> return . " ++ outputCode ++ " . " ++ expr)

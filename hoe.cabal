@@ -28,8 +28,9 @@ Executable hoe
                      , exceptions
                      , hint       >= 0.4.2
                      , mtl        == 2.*
+                     , regex-posix
                      , split
-                     , template-haskell
+                     , time
 
   Hs-source-dirs:      src
   Ghc-options:         -Wall
