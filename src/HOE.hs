@@ -41,8 +41,9 @@ imports =
   , "Text.Printf"
 
     -- other common modules
-  , "Data.List.Split" -- from split
-  , "Data.Time"       -- from time
+  , "Data.List.Split"  -- from split
+  , "Data.Time"        -- from time
+  , "Text.Regex.Posix" -- from regex-posix
   ]
 
 data Option
