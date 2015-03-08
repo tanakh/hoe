@@ -1,5 +1,5 @@
 Name:                hoe
-Version:             1.0
+Version:             1.0.1
 Synopsis:            hoe: Haskell One-liner Evaluator
 
 Description:
@@ -23,7 +23,9 @@ Source-repository head
 Executable hoe
   Main-is:             HOE.hs
 
-  Build-depends:       base        >= 4.7
+  Other-Modules:       Evaluator
+
+  Build-depends:       base        >= 4.7 && < 5
                      , cmdargs
                      , exceptions
                      , hint        >= 0.4.2
