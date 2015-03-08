@@ -13,7 +13,7 @@ Usage
 To show basic usage, run `hoe --help`.
 
 ```
-hoe-1.0 Haskell One-liner Evaluator, (c) Hideyuki Tanaka
+hoe Haskell One-liner Evaluator, (c) Hideyuki Tanaka
 
 hoe [OPTIONS] SCRIPT [FILES]
 
