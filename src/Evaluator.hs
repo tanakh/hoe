@@ -30,10 +30,10 @@ evals =
   [ evaluator "IO ()" "execute action"
       (\expr -> "\\_ -> " ++ expr ++ " >>= \\() -> return \"\"")
   , evaluator "Char -> Char" "map input string"
-      (\expr -> "\\_ -> return . map . " ++ expr)
+      (\expr -> "return . map " ++ expr)
   ] ++
   [ evaluator outputType ("output " ++ outputDescr)
-      (\expr -> "\\_ -> return . " ++ outputCode ++ " . " ++ expr)
+      (\expr -> "\\_ -> return . " ++ outputCode ++ " $ " ++ expr)
   | (outputType, outputDescr, _, outputCode) <- types False
   ] ++
   [ evaluator ("IO " ++ outputType) ("output result" ++ outputDescr)
