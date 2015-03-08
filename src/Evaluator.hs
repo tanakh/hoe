@@ -11,7 +11,7 @@ type Evaluator = String -> Interpreter Script
 
 types :: Bool -> [(String, String, String, String)]
 types isInput
-  | isInput = ss ++ vs "Read r"
+  | isInput = ss ++ reverse (vs "Read r")
   | otherwise = reverse ss ++ reverse (vs "Show s")
   where
     ss =

@@ -75,7 +75,7 @@ option = Option
   &= verbosity
   &= program "hoe"
   &= summary ("hoe-" ++ showVersion version ++ " Haskell One-liner Evaluator, (c) Hideyuki Tanaka")
-  &= details [ "The Awk like text processor, but it can write in Haskell."
+  &= details [ "The Awk like text processor, but it can use Haskell."
              , ""
              ]
 
