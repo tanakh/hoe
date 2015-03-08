@@ -7,6 +7,7 @@ module Main (main) where
 import           Control.Applicative
 import           Control.Monad
 import           Control.Monad.Catch
+import           Data.Version                 (showVersion)
 import           Language.Haskell.Interpreter (OptionVal ((:=)))
 import           Language.Haskell.Interpreter hiding (Option, name)
 import           System.Console.CmdArgs       as CA hiding ((:=))
@@ -14,6 +15,7 @@ import           System.Exit                  (exitFailure)
 import           System.IO
 
 import           Evaluator
+import           Paths_hoe                    (version)
 
 imports :: [String]
 imports =
@@ -72,7 +74,7 @@ option = Option
   }
   &= verbosity
   &= program "hoe"
-  &= summary "hoe-1.0 Haskell One-liner Evaluator, (c) Hideyuki Tanaka"
+  &= summary ("hoe-" ++ showVersion version ++ " Haskell One-liner Evaluator, (c) Hideyuki Tanaka")
   &= details [ "The Awk like text processor, but it can write in Haskell."
              , ""
              ]
