@@ -8,53 +8,48 @@ module Evaluator (
 
 import           Language.Haskell.Interpreter
 
-import           Template
+import           Template                     (t)
 
 type Script    = String -> IO String
 type Evaluator = String -> Interpreter Script
 
+types :: [(String, String, String, String)]
+types =
+  [ ("String", "string", "id", "id")
+  , ("[String]", "lines", "lines", "unlines")
+  , ("[[String]]", "table", "map words . lines", "unlines . map unwords")
+  , ("a", "value", "read", "(++ \"\\n\") . show")
+  , ("[a]", "value lines", "map read . lines", "unlines . map show")
+  , ("[[a]]", "value table", "map (map read . words) . lines", "unlines . map (unwords . map show)")
+  ]
+
 evals :: [(String, String, Evaluator)]
 evals =
-  [ -- simple value
-    evaluator "String" "output string"
-    [t| \_ -> return expr |]
-
-  , evaluator "Show a => a" "output value"
-    [t| \_ -> return $ show expr ++ "\n" |]
-
-    -- IO action
-  , evaluator "IO ()" "execute action"
+  [ evaluator "IO ()" "execute action"
     [t| \_ -> do () <- expr; return "" |]
-
-  , evaluator "IO String" "output result string"
-    [t| \_ -> expr |]
-
-  , evaluator "Show a => IO a" "output result value"
-    [t| \_ -> expr >>= return . (++ "\n") . show |]
-
-    -- input whole string
   , evaluator "Char -> Char" "map input string"
-    [t| return . map expr input |]
-
-  , evaluator "String -> String" "transform whole input string"
-    [t| return . expr |]
-
-  , evaluator "String -> [String]" "transform whole input string to lines"
-    [t| return . unlines . expr |]
-
-    -- input lines
-  , evaluator "[String] -> String" "transform lines to string"
-    [t| return . (++ "\n") . expr . lines |]
-
-  , evaluator "[String] -> [String]" "transform lines to line"
-    [t| return . unlines . expr . lines |]
-
-  , ( "a", "error", evalErr )
-  ]
+    [t| return . map expr |]
+  ] ++
+  [ evaluator outputType ("output " ++ outputDescr)
+      (\expr -> "\\_ -> return . " ++ outputCode ++ " . " ++ expr)
+  | (outputType, outputDescr, _, outputCode) <- reverse types
+  ] ++
+  [ evaluator ("IO " ++ outputType) ("output result" ++ outputDescr)
+      (\expr -> "\\_ -> return . " ++ outputCode ++ " =<< " ++ expr)
+  | (outputType, outputDescr, _, outputCode) <- reverse types
+  ] ++
+  [ evaluator
+      (inputType ++ " -> " ++ outputType)
+      ("transform " ++ inputDescr ++ " to " ++ outputDescr)
+      (\expr -> "return . " ++ outputCode ++ " . " ++ expr ++ " . " ++ inputCode)
+  | (inputType,  inputDescr,  inputCode, _)  <- types
+  , (outputType, outputDescr, _, outputCode) <- reverse types
+  ] ++
+  [ ( "a", "error", evalErr ) ]
 
 evaluator :: String -> String -> (String -> String) -> (String, String, Evaluator)
 evaluator typ description templ =
-  (typ, description, \expr -> interpret (templ expr) (as :: Script))
+  (typ, description, \expr -> interpret (templ $ "(" ++ expr ++ ")") (as :: Script))
 
 evalErr :: Evaluator
 evalErr expr = do
