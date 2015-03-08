@@ -70,8 +70,15 @@ option = Option
           &= name "mod"
           &= name "m"
   }
+  &= verbosity
   &= program "hoe"
-  &= summary "Haskell One-liner Evaluator"
+  &= summary "hoe-1.0 Haskell One-liner Evaluator, (c) Hideyuki Tanaka"
+  &= details [ "The Awk like text processor, but it can write in Haskell."
+             , ""
+             ]
+
+printLog :: String -> IO ()
+printLog msg = whenLoud $ hPutStrLn stderr msg
 
 main :: IO ()
 main = do
@@ -98,11 +105,12 @@ evalOneLiner opts = runInterpreter $ do
     [ (m, Nothing) | m <- modules opts ]
   set [ installedModulesInScope := True ]
 
-  (_typ, _descr, f) <-
-    choice [ (typ, descr, ) <$> compile (script opts)
-           | (typ, descr, compile) <- evals
+  (ty, descr, f) <-
+    choice [ (ty, descr, ) <$> compile (script opts)
+           | (ty, descr, compile) <- evals
            ]
-  liftIO $ hPutStrLn stderr $ "Use: " ++ _typ ++ " :: " ++ _descr
+
+  liftIO $ printLog $ "Interpret as: " ++ ty ++ " :: " ++ descr
   liftIO $ exec opts f
 
 choice :: [Interpreter a] -> Interpreter a

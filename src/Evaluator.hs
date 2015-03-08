@@ -11,18 +11,18 @@ type Evaluator = String -> Interpreter Script
 
 types :: Bool -> [(String, String, String, String)]
 types isInput
-  | isInput = ss ++ vs
-  | otherwise = reverse ss ++ reverse vs
+  | isInput = ss ++ vs "Read r"
+  | otherwise = reverse ss ++ reverse (vs "Show s")
   where
     ss =
       [ ("String", "string", "id", "id")
       , ("[String]", "lines", "lines", "unlines")
       , ("[[String]]", "table", "map words . lines", "unlines . map unwords")
       ]
-    vs =
-      [ ("a", "value", "read", "(++ \"\\n\") . show")
-      , ("[a]", "value lines", "map read . lines", "unlines . map show")
-      , ("[[a]]", "value table", "map (map read . words) . lines", "unlines . map (unwords . map show)")
+    vs t =
+      [ (t, "value", "read", "(++ \"\\n\") . show")
+      , ("[" ++ t ++ "]", "value lines", "map read . lines", "unlines . map show")
+      , ("[[" ++ t ++ "]]", "value table", "map (map read . words) . lines", "unlines . map (unwords . map show)")
       ]
 
 evals :: [(String, String, Evaluator)]
