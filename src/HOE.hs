@@ -8,8 +8,7 @@ import           Control.Applicative
 import           Control.Monad
 import           Control.Monad.Catch
 import           Data.Version                 (showVersion)
-import           Language.Haskell.Interpreter (OptionVal ((:=)))
-import           Language.Haskell.Interpreter hiding (Option, name, get)
+import           Language.Haskell.Interpreter hiding (get)
 import           Options.Declarative
 import           System.Exit                  (exitFailure)
 import           System.IO
@@ -51,7 +50,7 @@ imports =
 main :: IO ()
 main = run "hoe" (Just $ showVersion version) hoe
 
-hoe :: Flag "i" '["inplace"] "EXT" "Edit files in-place (make backup if EXT supplied)" (Maybe String)
+hoe :: Flag "i" '["inplace"] "EXT" "Edit files in-place (make backup if EXT is not null)" (Maybe String)
     -> Arg "SCRIPT" String
     -> Arg "[FILES]" [String]
     -> Flag "m" '["mod"] "MODULES" "Import modules before running the script" (Def "" String)
@@ -86,20 +85,16 @@ hoe inplace script files modules = Cmd $ do
             return ()
 
 exec :: [String] -> Maybe String -> Script -> IO ()
-exec [] _ f = do
-    s <- getContents
-    putStr =<< f s
+exec [] _ f = putStr =<< f =<< getContents
 
-exec files Nothing f =
+exec files mbext f =
     forM_ files $ \file -> do
         s <- readFile file
-        putStr =<< f s
-
-exec files (Just ext) f =
-    forM_ files $ \file -> do
-        s <- readFile file
-        when (ext /= "") $ writeFile (file ++ "." ++ ext) s
-        length s `seq` writeFile file =<< f s
+        case mbext of
+            Nothing -> putStr =<< f s
+            Just ext -> do
+                when (ext /= "") $ writeFile (file ++ "." ++ ext) s
+                length s `seq ` writeFile file =<< f s
 
 choice :: [Interpreter a] -> Interpreter a
 choice = foldl1 $ \a b -> catch a (\(_e :: SomeException) -> b)
