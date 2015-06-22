@@ -1,9 +1,15 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections       #-}
+
 module Evaluator (
   Script,
   Evaluator,
-  evals
+  evals,
+  compile,
   ) where
 
+import           Control.Applicative
+import           Control.Monad.Catch
 import           Language.Haskell.Interpreter
 
 type Script    = String -> IO String
@@ -57,3 +63,12 @@ evalErr :: Evaluator
 evalErr expr = do
   typ <- typeOf expr
   fail $ "cannot evaluate type of: " ++ typ
+
+compile :: String -> Interpreter (String, String, Script)
+compile script =
+    choice [ (ty, descr, ) <$> comp script
+           | (ty, descr, comp) <- evals
+           ]
+
+choice :: [Interpreter a] -> Interpreter a
+choice = foldl1 $ \a b -> catch a (\(_e :: SomeException) -> b)

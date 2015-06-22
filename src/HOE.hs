@@ -1,12 +1,8 @@
-{-# LANGUAGE DataKinds           #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections       #-}
+{-# LANGUAGE DataKinds #-}
 
 module Main (main) where
 
-import           Control.Applicative
 import           Control.Monad
-import           Control.Monad.Catch
 import           Data.Version                 (showVersion)
 import           Language.Haskell.Interpreter hiding (get)
 import           Options.Declarative
@@ -63,10 +59,7 @@ hoe inplace script files modules = Cmd $ do
             [ (m, Nothing) | m <- words $ get modules ]
         set [ installedModulesInScope := True ]
 
-        (ty, descr, f) <-
-            choice [ (ty, descr, ) <$> compile (get script)
-                   | (ty, descr, compile) <- evals
-                   ]
+        (ty, descr, f) <- compile $ get script
 
         liftIO $ printLog $ "Interpret as: " ++ ty ++ " :: " ++ descr
         liftIO $ exec (get files) (get inplace) f
@@ -95,9 +88,6 @@ exec files mbext f =
             Just ext -> do
                 when (ext /= "") $ writeFile (file ++ "." ++ ext) s
                 length s `seq ` writeFile file =<< f s
-
-choice :: [Interpreter a] -> Interpreter a
-choice = foldl1 $ \a b -> catch a (\(_e :: SomeException) -> b)
 
 printLog :: String -> IO ()
 printLog msg = {- whenLoud $ -} hPutStrLn stderr msg
