@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable  #-}
+{-# LANGUAGE DataKinds           #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections       #-}
 
@@ -9,8 +9,8 @@ import           Control.Monad
 import           Control.Monad.Catch
 import           Data.Version                 (showVersion)
 import           Language.Haskell.Interpreter (OptionVal ((:=)))
-import           Language.Haskell.Interpreter hiding (Option, name)
-import           System.Console.CmdArgs       as CA hiding ((:=))
+import           Language.Haskell.Interpreter hiding (Option, name, get)
+import           Options.Declarative
 import           System.Exit                  (exitFailure)
 import           System.IO
 
@@ -48,91 +48,61 @@ imports =
   , "Text.Regex.Posix" -- from regex-posix
   ]
 
-data Option
-  = Option
-    { inplace    :: Maybe String
-    , script     :: String
-    , inputFiles :: [String]
-    , modules    :: [String]
-    }
-  deriving (Show, Data, Typeable)
-
-option :: Option
-option = Option
-  { inplace =
-      def &= help "Edit files in place (make backup if EXT supplied)" &= opt "" &= typ "EXT"
-  , script =
-      def &= argPos 0 &= typ "SCRIPT"
-  , inputFiles =
-      def &= args &= typ "FILES"
-  , modules =
-      def &= help "Import a module before running the script"
-          &= opt ""
-          &= explicit
-          &= name "mod"
-          &= name "m"
-  }
-  &= verbosity
-  &= program "hoe"
-  &= summary ("hoe-" ++ showVersion version ++ " Haskell One-liner Evaluator, (c) Hideyuki Tanaka")
-  &= details [ "The Awk like text processor, but it can use Haskell."
-             , ""
-             ]
-
-printLog :: String -> IO ()
-printLog msg = whenLoud $ hPutStrLn stderr msg
-
 main :: IO ()
-main = do
-  opts <- cmdArgs option
-  r <- evalOneLiner opts
-  case r of
-    Left err -> do
-      case err of
-        WontCompile errs ->
-          hPutStrLn stderr $ "compile error: " ++ unlines (map errMsg errs)
-        UnknownError msg ->
-          hPutStrLn stderr msg
-        _ ->
-          hPrint stderr err
-      exitFailure
-    Right _ ->
-      return ()
+main = run "hoe" (Just $ showVersion version) hoe
 
-evalOneLiner :: Option -> IO (Either InterpreterError ())
-evalOneLiner opts = runInterpreter $ do
-  reset
-  setImportsQ $
-    [ (m, Nothing) | m <- imports ] ++
-    [ (m, Nothing) | m <- modules opts ]
-  set [ installedModulesInScope := True ]
+hoe :: Flag "i" '["inplace"] "EXT" "Edit files in-place (make backup if EXT supplied)" (Maybe String)
+    -> Arg "SCRIPT" String
+    -> Arg "[FILES]" [String]
+    -> Flag "m" '["mod"] "MODULES" "Import modules before running the script" (Def "" String)
+    -> Cmd "hoe: Haskell One-liner Evaluator"
+hoe inplace script files modules = Cmd $ do
+    result <- runInterpreter $ do
+        reset
+        setImportsQ $
+            [ (m, Nothing) | m <- imports ] ++
+            [ (m, Nothing) | m <- words $ get modules ]
+        set [ installedModulesInScope := True ]
 
-  (ty, descr, f) <-
-    choice [ (ty, descr, ) <$> compile (script opts)
-           | (ty, descr, compile) <- evals
-           ]
+        (ty, descr, f) <-
+            choice [ (ty, descr, ) <$> compile (get script)
+                   | (ty, descr, compile) <- evals
+                   ]
 
-  liftIO $ printLog $ "Interpret as: " ++ ty ++ " :: " ++ descr
-  liftIO $ exec opts f
+        liftIO $ printLog $ "Interpret as: " ++ ty ++ " :: " ++ descr
+        liftIO $ exec (get files) (get inplace) f
+
+    case result of
+        Left err -> do
+            case err of
+                WontCompile errs ->
+                    hPutStrLn stderr $ "compile error: " ++ unlines (map errMsg errs)
+                UnknownError msg ->
+                    hPutStrLn stderr msg
+                _ ->
+                    hPrint stderr err
+            exitFailure
+        Right _ ->
+            return ()
+
+exec :: [String] -> Maybe String -> Script -> IO ()
+exec [] _ f = do
+    s <- getContents
+    putStr =<< f s
+
+exec files Nothing f =
+    forM_ files $ \file -> do
+        s <- readFile file
+        putStr =<< f s
+
+exec files (Just ext) f =
+    forM_ files $ \file -> do
+        s <- readFile file
+        when (ext /= "") $ writeFile (file ++ "." ++ ext) s
+        length s `seq` writeFile file =<< f s
 
 choice :: [Interpreter a] -> Interpreter a
 choice = foldl1 $ \a b -> catch a (\(_e :: SomeException) -> b)
 
-exec :: Main.Option -> Script -> IO ()
-exec opts f =
-  case (inputFiles opts, inplace opts) of
-    ([], _) -> do
-        s <- getContents
-        putStr =<< f s
-
-    (files, Nothing) ->
-      forM_ files $ \file -> do
-        s <- readFile file
-        putStr =<< f s
-
-    (files, Just ext) ->
-      forM_ files $ \file -> do
-        s <- readFile file
-        when (ext /= "") $
-          writeFile (file ++ "." ++ ext) s
-        length s `seq` writeFile file =<< f s
+printLog :: String -> IO ()
+printLog msg = {- whenLoud $ -} hPutStrLn stderr msg
