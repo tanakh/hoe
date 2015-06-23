@@ -1,12 +1,12 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections       #-}
 
-module Evaluator (
-  Script,
-  Evaluator,
-  evals,
-  compile,
-  ) where
+module Evaluator
+    ( Script
+    , Evaluator
+    , evals
+    , compile
+    ) where
 
 import           Control.Applicative
 import           Control.Monad.Catch
@@ -17,52 +17,52 @@ type Evaluator = String -> Interpreter Script
 
 types :: Bool -> [(String, String, String, String)]
 types isInput
-  | isInput = ss ++ reverse (vs "Read r")
-  | otherwise = reverse ss ++ reverse (vs "Show s")
+    | isInput = ss ++ reverse (vs "Read r")
+    | otherwise = reverse ss ++ reverse (vs "Show s")
   where
     ss =
-      [ ("String", "string", "id", "id")
-      , ("[String]", "lines", "lines", "unlines")
-      , ("[[String]]", "table", "map words . lines", "unlines . map unwords")
-      ]
+        [ ("String", "string", "id", "id")
+        , ("[String]", "lines", "lines", "unlines")
+        , ("[[String]]", "table", "map words . lines", "unlines . map unwords")
+        ]
     vs t =
-      [ (t, "value", "read", "(++ \"\\n\") . show")
-      , ("[" ++ t ++ "]", "value lines", "map read . lines", "unlines . map show")
-      , ("[[" ++ t ++ "]]", "value table", "map (map read . words) . lines", "unlines . map (unwords . map show)")
-      ]
+        [ (t, "value", "read", "(++ \"\\n\") . show")
+        , ("[" ++ t ++ "]", "value lines", "map read . lines", "unlines . map show")
+        , ("[[" ++ t ++ "]]", "value table", "map (map read . words) . lines", "unlines . map (unwords . map show)")
+        ]
 
 evals :: [(String, String, Evaluator)]
 evals =
-  [ evaluator "IO ()" "execute action"
+    [ evaluator "IO ()" "execute action"
       (\expr -> "\\_ -> " ++ expr ++ " >>= \\() -> return \"\"")
-  , evaluator "Char -> Char" "map input string"
+    , evaluator "Char -> Char" "map input string"
       (\expr -> "return . map " ++ expr)
-  ] ++
-  [ evaluator outputType ("output " ++ outputDescr)
+    ] ++
+    [ evaluator outputType ("output " ++ outputDescr)
       (\expr -> "\\_ -> return . " ++ outputCode ++ " $ " ++ expr)
-  | (outputType, outputDescr, _, outputCode) <- types False
-  ] ++
-  [ evaluator ("IO " ++ outputType) ("output result " ++ outputDescr)
+    | (outputType, outputDescr, _, outputCode) <- types False
+    ] ++
+    [ evaluator ("IO " ++ outputType) ("output result " ++ outputDescr)
       (\expr -> "\\_ -> return . " ++ outputCode ++ " =<< " ++ expr)
-  | (outputType, outputDescr, _, outputCode) <- types False
-  ] ++
-  [ evaluator
+    | (outputType, outputDescr, _, outputCode) <- types False
+    ] ++
+    [ evaluator
       (inputType ++ " -> " ++ outputType)
       ("transform " ++ inputDescr ++ " to " ++ outputDescr)
       (\expr -> "return . " ++ outputCode ++ " . " ++ expr ++ " . " ++ inputCode)
-  | (inputType,  inputDescr,  inputCode, _)  <- types True
-  , (outputType, outputDescr, _, outputCode) <- types False
-  ] ++
-  [ ( "a", "error", evalErr ) ]
+    | (inputType,  inputDescr,  inputCode, _)  <- types True
+    , (outputType, outputDescr, _, outputCode) <- types False
+    ] ++
+    [ ( "a", "error", evalErr ) ]
 
 evaluator :: String -> String -> (String -> String) -> (String, String, Evaluator)
 evaluator typ description templ =
-  (typ, description, \expr -> interpret (templ $ "(" ++ expr ++ ")") (as :: Script))
+    (typ, description, \expr -> interpret (templ $ "(" ++ expr ++ ")") (as :: Script))
 
 evalErr :: Evaluator
 evalErr expr = do
-  typ <- typeOf expr
-  fail $ "cannot evaluate type of: " ++ typ
+    typ <- typeOf expr
+    fail $ "cannot evaluate type of: " ++ typ
 
 compile :: String -> Interpreter (String, String, Script)
 compile script =

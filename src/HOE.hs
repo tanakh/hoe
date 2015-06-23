@@ -14,37 +14,34 @@ import           Paths_hoe                    (version)
 
 imports :: [String]
 imports =
-  [ "Prelude"
+    [ "Prelude"
 
-    -- from base
-  , "Control.Applicative"
-  , "Control.Arrow"
-  , "Control.Monad"
-  , "Data.Bits"
-  , "Data.Char"
-  , "Data.Complex"
-  , "Data.Either"
-  , "Data.Function"
-  , "Data.List"
-  , "Data.Maybe"
-  , "Data.Monoid"
-  , "Data.Ord"
-  , "Data.Ratio"
-  , "Numeric"
-  , "System.IO"
-  , "System.IO.Unsafe"
-  , "System.Info"
-  , "System.Random"
-  , "Text.Printf"
+      -- from base
+    , "Control.Applicative"
+    , "Control.Arrow"
+    , "Control.Monad"
+    , "Data.Bits"
+    , "Data.Char"
+    , "Data.Complex"
+    , "Data.Either"
+    , "Data.Function"
+    , "Data.List"
+    , "Data.Maybe"
+    , "Data.Monoid"
+    , "Data.Ord"
+    , "Data.Ratio"
+    , "Numeric"
+    , "System.IO"
+    , "System.IO.Unsafe"
+    , "System.Info"
+    , "System.Random"
+    , "Text.Printf"
 
-    -- other common modules
-  , "Data.List.Split"  -- from split
-  , "Data.Time"        -- from time
-  , "Text.Regex.Posix" -- from regex-posix
-  ]
-
-main :: IO ()
-main = run "hoe" (Just $ showVersion version) hoe
+      -- other common modules
+    , "Data.List.Split"  -- from split
+    , "Data.Time"        -- from time
+    , "Text.Regex.Posix" -- from regex-posix
+    ]
 
 hoe :: Flag "i" '["inplace"] "EXT" "Edit files in-place (make backup if EXT is not null)" (Maybe String)
     -> Arg "SCRIPT" String
@@ -74,7 +71,6 @@ hoe inplace script files modules = do
 
 exec :: [String] -> Maybe String -> Script -> IO ()
 exec [] _ f = putStr =<< f =<< getContents
-
 exec files mbext f =
     forM_ files $ \file -> do
         s <- readFile file
@@ -83,3 +79,6 @@ exec files mbext f =
             Just ext -> do
                 when (ext /= "") $ writeFile (file ++ "." ++ ext) s
                 length s `seq ` writeFile file =<< f s
+
+main :: IO ()
+main = run "hoe" (Just $ showVersion version) hoe
