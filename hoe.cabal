@@ -1,5 +1,5 @@
 name:                hoe
-version:             1.0.1
+version:             1.1.0
 synopsis:            hoe: Haskell One-liner Evaluator
 description:         Please see README.md
 homepage:            http://github.com/tanakh/hoe
@@ -20,10 +20,12 @@ executable hoe
   build-depends:       base        >= 4.7 && < 5
                      , exceptions
                      , hint        >= 0.4.2
-                     , optparse-declarative
+                     , monad-logger
                      , mtl
+                     , optparse-declarative >= 0.2
                      , regex-posix
                      , split
+                     , text
                      , time
   default-language:    Haskell2010
 

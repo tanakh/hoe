@@ -1,12 +1,15 @@
-{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DataKinds       #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Main (main) where
 
 import           Control.Monad
+import           Control.Monad.Logger
+import           Control.Monad.Trans
+import qualified Data.Text                    as T
 import           Data.Version                 (showVersion)
 import           Language.Haskell.Interpreter hiding (get)
 import           Options.Declarative
-import           System.Exit                  (exitFailure)
 import           System.IO
 
 import           Evaluator
@@ -50,32 +53,27 @@ hoe :: Flag "i" '["inplace"] "EXT" "Edit files in-place (make backup if EXT is n
     -> Arg "SCRIPT" String
     -> Arg "[FILES]" [String]
     -> Flag "m" '["mod"] "MODULES" "Import modules before running the script" (Def "" String)
-    -> Cmd "hoe: Haskell One-liner Evaluator"
-hoe inplace script files modules = Cmd $ do
-    result <- runInterpreter $ do
+    -> Cmd "hoe: Haskell One-liner Evaluator" ()
+hoe inplace script files modules = do
+    compiled <- liftIO $ runInterpreter $ do
         reset
         setImportsQ $
             [ (m, Nothing) | m <- imports ] ++
             [ (m, Nothing) | m <- words $ get modules ]
         set [ installedModulesInScope := True ]
+        compile $ get script
 
-        (ty, descr, f) <- compile $ get script
+    case compiled of
+        Left (WontCompile errs) ->
+            liftIO $ hPutStr stderr $ "compile error: " ++ unlines (map errMsg errs)
+        Left (UnknownError msg) ->
+            liftIO $ hPutStrLn stderr msg
+        Left err ->
+            liftIO $ hPrint stderr err
 
-        liftIO $ printLog $ "Interpret as: " ++ ty ++ " :: " ++ descr
-        liftIO $ exec (get files) (get inplace) f
-
-    case result of
-        Left err -> do
-            case err of
-                WontCompile errs ->
-                    hPutStrLn stderr $ "compile error: " ++ unlines (map errMsg errs)
-                UnknownError msg ->
-                    hPutStrLn stderr msg
-                _ ->
-                    hPrint stderr err
-            exitFailure
-        Right _ ->
-            return ()
+        Right (ty, descr, f) -> do
+            $logWarn $ T.pack $ "Interpret as: " ++ ty ++ " :: " ++ descr
+            liftIO $ exec (get files) (get inplace) f
 
 exec :: [String] -> Maybe String -> Script -> IO ()
 exec [] _ f = putStr =<< f =<< getContents
@@ -88,6 +86,3 @@ exec files mbext f =
             Just ext -> do
                 when (ext /= "") $ writeFile (file ++ "." ++ ext) s
                 length s `seq ` writeFile file =<< f s
-
-printLog :: String -> IO ()
-printLog msg = {- whenLoud $ -} hPutStrLn stderr msg
