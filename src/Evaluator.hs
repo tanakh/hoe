@@ -42,7 +42,7 @@ evals =
       (\expr -> "\\_ -> return . " ++ outputCode ++ " $ " ++ expr)
   | (outputType, outputDescr, _, outputCode) <- types False
   ] ++
-  [ evaluator ("IO " ++ outputType) ("output result" ++ outputDescr)
+  [ evaluator ("IO " ++ outputType) ("output result " ++ outputDescr)
       (\expr -> "\\_ -> return . " ++ outputCode ++ " =<< " ++ expr)
   | (outputType, outputDescr, _, outputCode) <- types False
   ] ++
