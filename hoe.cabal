@@ -20,9 +20,8 @@ executable hoe
   build-depends:       base        >= 4.7 && < 5
                      , exceptions
                      , hint        >= 0.4.2
-                     , monad-logger
                      , mtl
-                     , optparse-declarative >= 0.2
+                     , optparse-declarative >= 0.3
                      , regex-posix
                      , split
                      , text

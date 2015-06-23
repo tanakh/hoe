@@ -1,12 +1,9 @@
-{-# LANGUAGE DataKinds       #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE DataKinds #-}
 
 module Main (main) where
 
 import           Control.Monad
-import           Control.Monad.Logger
 import           Control.Monad.Trans
-import qualified Data.Text                    as T
 import           Data.Version                 (showVersion)
 import           Language.Haskell.Interpreter hiding (get)
 import           Options.Declarative
@@ -72,7 +69,7 @@ hoe inplace script files modules = do
             liftIO $ hPrint stderr err
 
         Right (ty, descr, f) -> do
-            $logWarn $ T.pack $ "Interpret as: " ++ ty ++ " :: " ++ descr
+            logStr 1 $ "Interpret as: " ++ ty ++ " :: " ++ descr
             liftIO $ exec (get files) (get inplace) f
 
 exec :: [String] -> Maybe String -> Script -> IO ()
