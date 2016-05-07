@@ -2,5 +2,5 @@ flags: {}
 packages:
   - '.'
 extra-deps:
-  - optparse-declarative-0.2.0
+  - optparse-declarative-0.3.0
 resolver: lts-2.14
